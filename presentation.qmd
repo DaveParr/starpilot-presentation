@@ -1,0 +1,403 @@
+---
+title: "Presentation"
+format:
+  revealjs:
+    theme: solarized	
+---
+
+## Goals
+- Apply Retrieval Augmented Generation to a goal I have (and maybe other people)
+- Understand how LangChain (and friends) works through building something novel
+- Experiment in a way that leans into what LLMs + AI are good at
+	- Semantic meaning
+
+## Level Set
+
+> I'm going to assume you all know the meaning of 'AI', 'LLM', 'GPT'
+
+- Can you define these terms
+	- Retrieval Augmented Generation
+	- Vector Embedding
+	- Vector Store
+	- Vector Similarity
+- Can you read python
+
+
+
+## Semantic vs Keyword
+- Keyword search tests "how close a string is to another string"
+	- Exact Match
+		- `cool cats` != `chill felines`
+	- Partially Included
+		- `cool cats` partially fits `cooler cats`
+	- Auto complete
+		- `cool...` -> `cool cats`
+- Semantic search tests "how similar in _meaning_ is the phrase to another phrase"
+	- `cool cats` is equivalent in meaning to `chill felines`, also `groovy kittys`, `suave main coon` and `sphinx with style`
+
+
+## What is starpilot?
+
+- Use you a GitHub Star for great good
+
+- Generate personal suggestions of useful packages/tools for your current programming goals  
+
+
+## Why is this problem suitable for AI?
+- GitHub stars are public and standard across languages/stacks/specialisms
+- GitHub repos are text rich data
+	- README.MD
+- GitHub repos are a 'weak standard'
+	- Repo tags are free text
+	- Repo structure is by 'convention'
+		- But which convention?
+	- README.MD structure varies subjectively by community, convention and needs
+
+## Solution Requirements
+
+- A method to extract the data from GitHub
+- A connection to an llm
+- A framework to parse 100s (1000s?) of 'similarly' structured data
+- A data store for processed data
+- An interactive interface for the developer to access the data
+
+
+
+## Solution Architecture
+* PyGithub
+	* GitHub Rest API access
+* Langchain
+	* LLM Rest API Access
+	* Document parsing tools
+	* Vector store prompt query framework 
+* Chroma
+	* On disk vector store
+* Typer
+	* 'FastAPI' style CLI framework
+
+
+## Similarity Search
+```{mermaid}
+flowchart LR
+
+subgraph 0 Resources
+	GH([GitHub Repo])
+	DB[(Chroma)]
+	LLM([LLM])
+end
+
+subgraph 1 ETL
+	raw(raw_GH/*.json)
+	docs_in(Documents)
+	vec(Vector Embedding)
+
+	GH--->|PyGitHub| raw
+	raw-->|LangChain|docs_in
+	docs_in-->|LangChain|LLM
+	LLM-->|LangChain|vec
+	vec-->|LangChain|DB
+end
+
+subgraph 2 Execution
+	cli([cli])
+	q(query)
+	LLM([LLM])
+	q_vec(Query Vector)
+	docs_out(Document)
+	a(suggestions)
+
+	cli-->|Typer|q
+	q -->|LangChain|LLM
+	LLM -->|LangChain|q_vec
+	q_vec -->|LangChain|DB
+	DB-->|LangChain|docs_out
+	docs_out-->|Typer|a
+end
+```
+
+
+## Outcome
+- IT'S ALIVE
+	- Data gets read
+	- Read data gets embedded
+	- Embedded data gets stored
+	- Embedded data gets queried
+- IT STINKS
+	- Reading data is punishingly long 
+		- 200 stars in 30 minutes
+	- Querying data is basic
+		- Semantic search works, but is broad
+		- 'DataFrames for Python' returns Pandas, and Tidyverse in R, and DataTables in JavaScript
+
+
+## Refined Version
+```{mermaid}
+flowchart TB
+
+LLM([LLM])
+GH([GitHub Repo])
+raw(raw_GH/*.json)
+prepped(enhanced_GH/*.json)
+style prepped fill:red
+docs_in(Documents)
+vec_doc(Vector Document)
+DB[(Chroma)]
+self_query(Self Query)
+vec_q(Vector Embedding)
+db_filter(Filter Value)
+cli([cli])
+q(query)
+docs_out(Document)
+a(suggestions)
+
+subgraph 0 Resources
+	GH
+	DB
+	LLM
+end
+
+subgraph 1 ETL
+	GH--->|GraphQL| raw
+	raw-->|LangChain|prepped
+	prepped-->|LangChain|docs_in
+	docs_in-->|LangChain|LLM
+	LLM-->|LangChain|vec_doc
+	vec_doc-->DB
+end
+
+subgraph 2 Execution
+	LLM-->|LangChain|self_query
+	self_query-->|LangChain|db_filter
+	style self_query fill:red
+	self_query-->|LangChain|vec_q
+	db_filter-->DB
+	style db_filter fill:red
+	vec_q --> DB
+	cli-->|typer|q
+	q -->|LangChain|LLM
+	DB-->|LangChain|docs_out
+	docs_out-->|Typer|a
+end
+```
+
+## What this gets us
+
+- Faster data read with `GraphQL`
+	- Reduces network overhead of a per repo call
+		- Returns are now paginated `json` files
+	- 20x speed up
+
+- Enhanced data preprocessing
+	- Extracts more data from the repo
+		- Repo tags
+		- Stars
+		- Primary Language
+	- More selective on data load
+		- Only load 'popular' repos
+		- Only load 'relevant' repos
+
+- Enhanced data preprocessing + Self Querying
+	- Enables more nuanced queries like "Dataframes for Python" -> "Pandas"
+
+::: notes
+- So lets look at some key parts of the code now
+:::
+
+
+## Example JSON in
+
+```json
+{
+    "name": "langchain",
+    "nameWithOwner": "langchain-ai/langchain",
+    "url": "https://github.com/langchain-ai/langchain",
+    "homepageUrl": "https://python.langchain.com",
+    "description": "\ud83e\udd9c\ud83d\udd17 Build context-aware reasoning applications",
+    "stargazerCount": 77908,
+    "primaryLanguage": "Python",
+    "languages": [
+        "Python",
+        "Makefile",
+        "HTML",
+        "Dockerfile",
+        "TeX",
+        "JavaScript",
+        "Shell",
+        "XSLT",
+        "Jupyter Notebook",
+        "MDX"
+    ],
+    "owner": "langchain-ai",
+    "content": "langchain \ud83e\udd9c\ud83d\udd17 Build context-aware reasoning applications Python"
+}
+```
+::: notes
+- This is an example of the json file that is written to disk
+- Picking one at total random we get Tims workshop repo for one of the PyData Cardiff workshops
+- It contains the metadata and content of a repo
+- Content is created by starpilot by appending the `description` and `name` fields
+- At this stage I have one json per starred repo, and these now need to be processed and loaded into the vector store
+- To do this there is a `prepare_documents` function in Starpilot
+:::
+
+# `prepare documents` function
+
+## {auto-animate="true"}
+
+```python {.python}
+def prepare_documents(
+    repo_contents_dir: str = "./repo_content",
+) -> List[Document]:
+    """
+    Prepare the documents for ingestion into the vectorstore
+    """
+	...
+	return documents
+```
+
+::: notes
+- Here's the function signature
+- It takes a directory of json files as input
+- It returns a list of `Document` objects
+- A `Document` is a class defined in the `LangChain` library
+- The `Document` object contains the content _and_ metadata for a given repo
+:::
+
+## {auto-animate=true}
+
+```{.python code-line-numbers="7-10"}
+def prepare_documents(
+    repo_contents_dir: str = "./repo_content",
+) -> List[Document]:
+    """
+    Prepare the documents for ingestion into the vectorstore
+    """
+
+	file_paths = []
+    for file in os.listdir(repo_contents_dir):
+        file_paths.append(os.path.join(repo_contents_dir, file))
+
+    ...
+
+	return documents
+```
+
+::: notes
+- `prepare_documents` first creates a list of file paths to the json files
+- Each item in this list is the direct path to a specific json file, each of which is the content of a specific repo read through `GraphQL`
+:::
+
+## {auto-animate=true}
+
+```{.python code-line-numbers="5-16"}
+def prepare_documents(
+    repo_contents_dir: str = "./repo_content",
+) -> List[Document]:
+	...
+    documents = []
+    for file_path in track(file_paths, description="Loading documents..."):
+        logger.debug("Loading document", file=file_path)
+        loader = JSONLoader(
+            file_path,
+            jq_schema=".",
+            content_key="content",
+            metadata_func=_metadata_func,
+            text_content=False,
+        )
+        if (loaded_document := loader.load())[0].page_content != "":
+            documents.extend(loaded_document)
+	...
+	return documents
+```
+
+::: notes
+- The function reads in the json files written per repo into memory
+- The `JSONLoader` class is used to load the json files
+- The `Document` objects are then returned as a list
+- `jq_schema` defines the "root" of the json file
+- `content_key` defines the key in the json file that contains the content
+- `metadata_func` is a function that extracts metadata from the json file
+- Finally if the `Document` object has content it is added to the list of `Document` objects
+:::
+
+## {auto-animate=true}
+
+```{.python code-line-numbers="12"}
+def prepare_documents(
+    repo_contents_dir: str = "./repo_content",
+) -> List[Document]:
+	...
+    documents = []
+    for file_path in track(file_paths, description="Loading documents..."):
+        logger.debug("Loading document", file=file_path)
+        loader = JSONLoader(
+            file_path,
+            jq_schema=".",
+            content_key="content",
+            metadata_func=_metadata_func,
+            text_content=False,
+        )
+        if (loaded_document := loader.load())[0].page_content != "":
+            documents.extend(loaded_document)
+	...
+	return documents
+```
+
+::: notes
+- However, what's the `_metadata_func` function?
+:::
+
+## {auto-animate=true}
+
+```python{.python code-line-numbers="5-18"}
+def prepare_documents(
+    repo_contents_dir: str = "./repo_content",
+) -> List[Document]:
+
+    def _metadata_func(record: dict, metadata: dict) -> dict:
+        metadata["url"] = record.get("url")
+        metadata["name"] = record.get("name")
+        metadata["stargazerCount"] = record["stargazerCount"]
+        if (primary_language := record.get("primaryLanguage")) is not None:
+            metadata["primaryLanguage"] = primary_language
+        if (description := record.get("description")) is not None:
+            metadata["description"] = description
+        if (topics := record.get("topics")) is not None:
+            metadata["topics"] = " ".join(topics)
+        if (languages := record.get("languages")) is not None:
+            metadata["languages"] = " ".join(languages)
+
+        return metadata
+
+	...
+
+    return documents
+```
+
+::: notes
+- `_metadata_func` is a function that extracts metadata for the repo and processes it to be inducded as the metadata of the `Document` object
+- It extracts the `url`, `name`, `stargazerCount`, `primaryLanguage`, `description`, `topics` and `languages` fields from the json file as long as they exist
+- The items that are extracted are then added to the `metadata` dictionary
+- The `metadata` dictionary is then returned as part of the `Document` object
+:::
+
+## Using the `Document` object
+
+```python
+from langchain_community.vectorstores import Chroma
+from langchain_openai.embeddings import OpenAIEmbeddings
+
+Chroma.from_documents(
+	documents=utils.prepare_documents(),
+	embedding=OpenAIEmbeddings(model="text-embedding-3-large"),
+	persist_directory="./vectorstore-chroma",
+)
+```
+
+::: notes
+- To use this `Document` object, we need to pass it to the `Chroma` class using the `from_documents` method.
+- The `Chroma` class is a class that is part of the `LangChain` library
+- We also need to pass an `embedding` object to the `Chroma` class
+- On call, this method will create a vector store from the `Document` objects and then for each `Document` object, it will embed the content of the `Document` object using the `OpenAIEmbeddings` class and store the embeddings in the vector store
+- The metadata of the `Document` object is also stored in the vector store, but not embedded. We'll see why this is important later
+:::
