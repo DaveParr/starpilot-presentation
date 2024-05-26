@@ -33,7 +33,7 @@ format:
 	- Auto complete
 		- `cool...` -> `cool cats`
 - Semantic search tests "how similar in _meaning_ is the phrase to another phrase"
-	- `cool cats` is equivalent in meaning to `chill felines`, also `groovy kittys`, `suave main coon` and `sphinx with style`
+	- `cool cats` is equivalent in meaning to `chill felines`, also `groovy kitty's`, `suave main coon` and `sphinx with style`
 
 
 ## What is starpilot?
@@ -233,16 +233,17 @@ end
 ```
 ::: notes
 - This is an example of the json file that is written to disk
-- Picking one at total random we get Tims workshop repo for one of the PyData Cardiff workshops
 - It contains the metadata and content of a repo
 - Content is created by starpilot by appending the `description` and `name` fields
 - At this stage I have one json per starred repo, and these now need to be processed and loaded into the vector store
 - To do this there is a `prepare_documents` function in Starpilot
 :::
 
-# `prepare documents` function
+# The `prepare_documents` function
 
-## {auto-animate="true"}
+## `prepare_documents` {auto-animate="true"}
+
+- The `prepare_documents` function is responsible for reading in the json files and creating `Document` objects
 
 ```python {.python}
 def prepare_documents(
@@ -263,7 +264,9 @@ def prepare_documents(
 - The `Document` object contains the content _and_ metadata for a given repo
 :::
 
-## {auto-animate=true}
+## `prepare_documents` {auto-animate=true}
+
+Get the file paths for each `json` file for each repo
 
 ```{.python code-line-numbers="7-10"}
 def prepare_documents(
@@ -287,7 +290,9 @@ def prepare_documents(
 - Each item in this list is the direct path to a specific json file, each of which is the content of a specific repo read through `GraphQL`
 :::
 
-## {auto-animate=true}
+## `prepare_documents` {auto-animate=true}
+
+Load the `Document` objects from the json files
 
 ```{.python code-line-numbers="5-16"}
 def prepare_documents(
@@ -320,7 +325,9 @@ def prepare_documents(
 - Finally if the `Document` object has content it is added to the list of `Document` objects
 :::
 
-## {auto-animate=true}
+## `prepare_documents` {auto-animate=true}
+
+The `metadata_func` function is used to extract metadata from the json file
 
 ```{.python code-line-numbers="12"}
 def prepare_documents(
@@ -347,9 +354,11 @@ def prepare_documents(
 - However, what's the `_metadata_func` function?
 :::
 
-## {auto-animate=true}
+## `prepare_documents` {auto-animate=true}
 
-```python{.python code-line-numbers="5-18"}
+The `_metadata_func` function is used to extract metadata from the json file
+
+```{.python code-line-numbers="5-18"}
 def prepare_documents(
     repo_contents_dir: str = "./repo_content",
 ) -> List[Document]:
@@ -375,15 +384,18 @@ def prepare_documents(
 ```
 
 ::: notes
-- `_metadata_func` is a function that extracts metadata for the repo and processes it to be inducded as the metadata of the `Document` object
+- `_metadata_func` is a function that extracts metadata for the repo and processes it to be included as the metadata of the `Document` object
 - It extracts the `url`, `name`, `stargazerCount`, `primaryLanguage`, `description`, `topics` and `languages` fields from the json file as long as they exist
 - The items that are extracted are then added to the `metadata` dictionary
 - The `metadata` dictionary is then returned as part of the `Document` object
 :::
 
-## Using the `Document` object
 
-```python
+## Using the `prepare_documents` function {auto-animate=true}
+
+`prepare_documents` is used to load the `Document` objects into `Chroma
+
+```{.python code-line-numbers="5"}
 from langchain_community.vectorstores import Chroma
 from langchain_openai.embeddings import OpenAIEmbeddings
 
@@ -395,9 +407,695 @@ Chroma.from_documents(
 ```
 
 ::: notes
-- To use this `Document` object, we need to pass it to the `Chroma` class using the `from_documents` method.
+- To use this list of `Documents` , we need to pass it to the `Chroma` class using the `from_documents` method.
+:::
+
+## Using the `prepare_documents` function {auto-animate=true}
+`Chroma.from_documents` also needs an `embedding` object and a `persist_directory`
+
+```{.python code-line-numbers="6-7"}
+from langchain_community.vectorstores import Chroma
+from langchain_openai.embeddings import OpenAIEmbeddings
+
+Chroma.from_documents(
+	documents=utils.prepare_documents(),
+	embedding=OpenAIEmbeddings(model="text-embedding-3-large"),
+	persist_directory="./vectorstore-chroma",
+)
+```
+
+::: notes
 - The `Chroma` class is a class that is part of the `LangChain` library
 - We also need to pass an `embedding` object to the `Chroma` class
 - On call, this method will create a vector store from the `Document` objects and then for each `Document` object, it will embed the content of the `Document` object using the `OpenAIEmbeddings` class and store the embeddings in the vector store
 - The metadata of the `Document` object is also stored in the vector store, but not embedded. We'll see why this is important later
 :::
+
+# Accessing the Vector Store
+
+## Semantic similarity search {auto-animate=true}
+Semantic search accepts a query string and returns the most relevant `Document` objects
+
+```{.python code-line-numbers="5"}
+def shoot(
+    vectorstore_path: str,
+    k: int,
+    method: SearchMethods = SearchMethods.similarity,
+	query: str,
+) -> List[Document]:
+    """
+    Create a retriever from a vectorstore and query it
+    """
+```
+
+::: notes
+- This is the function signature for the `create_retriever` function in starpilot
+:::
+
+## Semantic similarity search {auto-animate=true}
+Create a `retriever` object from the vector store and query it
+
+```{.python code-line-numbers="9-21"}
+def shoot(
+        vectorstore_path: str,
+    k: int,
+    method: SearchMethods = SearchMethods.similarity,
+	query: str,
+) -> List[Document]:
+    """
+    Create a retriever from a vectorstore and query it
+    """
+	retriever = Chroma(
+        persist_directory=vectorstore_path,
+        embedding_function=OpenAIEmbeddings(
+            model="text-embedding-3-large"
+        ),
+    ).as_retriever(
+        search_type=method,
+        search_kwargs={
+            "k": k,
+        },
+    )
+    return retriever.get_relevant_documents(query)
+```
+
+::: notes
+- This is the `shoot` function in starpilot, which is used to perform a semantic search on the vector store
+- First, we need to create a retriever object from the vector store Class
+- We need to specify the embedding function that was used to embed the content of the `Document` object
+- We also need to specify the search method that we want to use, which is effectively the algorithm to compute the similarity between the query vector and the vectors in the vector store
+- Finally, we need to pass the query string to the `get_relevant_documents` method of the retriever object, and it will return the most relevant `Document` objects
+:::
+
+## DEMO SHOOT
+
+<!-- TODO -->
+
+## Self Querying {auto-animate=true}
+
+Self-querying is a way to pre-filter the results of a semantic search by metadata fields
+
+```{.python code-line-numbers="1-16"}
+def astrologer(
+    query: str,
+    k: Optional[int] = typer.Option(
+        4, help="Number of results to fetch from the vectorstore"
+    ),
+) -> List[Document]:
+    """
+    A self-query of the vectorstore that allows the user to search for a repo while filtering by attributes
+
+    Example:
+    ```
+    starpilot astrologer "What can I use to build a web app with Python?"
+    starpilot astrologer "Suggest some Rust machine learning crates"
+    ```
+
+    """
+    metadata_field_info = [
+        AttributeInfo(
+            name="languages",
+            description="the programming languages of a repo. Example: ['python', 'R', 'Rust']",
+            type="string",
+        ),
+        AttributeInfo(
+            name="name",
+            description="the name of a repository. Example: 'langchain'",
+            type="string",
+        ),
+        AttributeInfo(
+            name="topics",
+            description="the topics a repository is tagged with. Example: ['data-science', 'machine-learning', 'web-development', 'tidyverse']",
+            type="string",
+        ),
+        AttributeInfo(
+            name="url",
+            description="the url of a repository on GitHub",
+            type="string",
+        ),
+        AttributeInfo(
+            name="stargazerCount",
+            description="the number of stars a repository has on GitHub",
+            type="number",
+        ),
+    ]
+
+    document_content_description = "content describing a repository on GitHub"
+
+    prompt = get_query_constructor_prompt(
+        document_content_description,
+        metadata_field_info,
+        examples=[
+            (
+                "Python machine learning repos",
+                {
+                    "query": "machine learning",
+                    "filter": 'eq("primaryLanguage", "Python")',
+                },
+            ),
+            (
+                "Rust Dataframe crates",
+                {"query": "data frame", "filter": 'eq("primaryLanguage", "Rust")'},
+            ),
+            (
+                "What R packages do time series analysis",
+                {"query": "time series", "filter": 'eq("primaryLanguage", "R")'},
+            ),
+            (
+                "data frame packages with 100 stars or more",
+                {
+                    "query": "data frame",
+                    "filter": 'gte("stargazerCount", 100)',
+                },
+            ),
+        ],
+        allowed_comparators=[
+            Comparator.EQ,
+            Comparator.NE,
+            Comparator.GT,
+            Comparator.GTE,
+            Comparator.LT,
+            Comparator.LTE,
+        ],
+    )
+
+	llm = ChatOpenAI(model="gpt-3.5-turbo",)
+
+    output_parser = StructuredQueryOutputParser.from_components()
+
+    query_constructor = prompt | llm | output_parser
+
+    vectorstore = Chroma(
+        persist_directory="./vectorstore-chroma",
+        embedding_function=OpenAIEmbeddings(model="text-embedding-3-large"),
+    )
+
+    retriever = SelfQueryRetriever(
+        query_constructor=query_constructor,
+        vectorstore=vectorstore,
+        structured_query_translator=ChromaTranslator(),
+        search_kwargs={"k": k},
+    )
+
+    results = retriever.invoke(query)
+
+	return results
+```
+
+::: notes
+- So this is the `astrologer` function in starpilot
+- It's distinct from the `shoot` function in that it allows the user to filter the results by metadata fields
+- To do this we use more LangChain classes to orchestrate the query
+:::
+
+## Self Querying {auto-animate=true}
+
+Create a list of `AttributeInfo` objects that describe the metadata fields
+
+```{.python code-line-numbers="17-43"}
+def astrologer(
+    query: str,
+    k: Optional[int] = typer.Option(
+        4, help="Number of results to fetch from the vectorstore"
+    ),
+) -> List[Document]:
+    """
+    A self-query of the vectorstore that allows the user to search for a repo while filtering by attributes
+
+    Example:
+    ```
+    starpilot astrologer "What can I use to build a web app with Python?"
+    starpilot astrologer "Suggest some Rust machine learning crates"
+    ```
+
+    """
+    metadata_field_info = [
+        AttributeInfo(
+            name="languages",
+            description="the programming languages of a repo. Example: ['python', 'R', 'Rust']",
+            type="string",
+        ),
+        AttributeInfo(
+            name="name",
+            description="the name of a repository. Example: 'langchain'",
+            type="string",
+        ),
+        AttributeInfo(
+            name="topics",
+            description="the topics a repository is tagged with. Example: ['data-science', 'machine-learning', 'web-development', 'tidyverse']",
+            type="string",
+        ),
+        AttributeInfo(
+            name="url",
+            description="the url of a repository on GitHub",
+            type="string",
+        ),
+        AttributeInfo(
+            name="stargazerCount",
+            description="the number of stars a repository has on GitHub",
+            type="number",
+        ),
+    ]
+
+    document_content_description = "content describing a repository on GitHub"
+
+    prompt = get_query_constructor_prompt(
+        document_content_description,
+        metadata_field_info,
+        examples=[
+            (
+                "Python machine learning repos",
+                {
+                    "query": "machine learning",
+                    "filter": 'eq("primaryLanguage", "Python")',
+                },
+            ),
+            (
+                "Rust Dataframe crates",
+                {"query": "data frame", "filter": 'eq("primaryLanguage", "Rust")'},
+            ),
+            (
+                "What R packages do time series analysis",
+                {"query": "time series", "filter": 'eq("primaryLanguage", "R")'},
+            ),
+            (
+                "data frame packages with 100 stars or more",
+                {
+                    "query": "data frame",
+                    "filter": 'gte("stargazerCount", 100)',
+                },
+            ),
+        ],
+        allowed_comparators=[
+            Comparator.EQ,
+            Comparator.NE,
+            Comparator.GT,
+            Comparator.GTE,
+            Comparator.LT,
+            Comparator.LTE,
+        ],
+    )
+
+	llm = ChatOpenAI(model="gpt-3.5-turbo",)
+
+    output_parser = StructuredQueryOutputParser.from_components()
+
+    query_constructor = prompt | llm | output_parser
+
+    vectorstore = Chroma(
+        persist_directory="./vectorstore-chroma",
+        embedding_function=OpenAIEmbeddings(model="text-embedding-3-large"),
+    )
+
+    retriever = SelfQueryRetriever(
+        query_constructor=query_constructor,
+        vectorstore=vectorstore,
+        structured_query_translator=ChromaTranslator(),
+        search_kwargs={"k": k},
+    )
+
+    results = retriever.invoke(query)
+
+	return results
+```
+
+::: notes
+- To enable self-querying, we are effectively creating a prompt for an llm
+- The prompt is going to receive the users query, then it will destructure the query into the part that is the query and the part that is the filter
+- To do this we need to describe those metadata fields from earlier we want to filter by
+- LangChain provides `AttributeInfo` objects to describe the metadata fields
+- We provide one for each field and collect them into a list
+:::
+
+## Self Querying {auto-animate=true}
+
+Construct the query prompt using get query constructor prompt to return a `BasePromptTemplate` object
+
+```{.python code-line-numbers="45-82"}
+def astrologer(
+    query: str,
+    k: Optional[int] = typer.Option(
+        4, help="Number of results to fetch from the vectorstore"
+    ),
+) -> List[Document]:
+    """
+    A self-query of the vectorstore that allows the user to search for a repo while filtering by attributes
+
+    Example:
+    ```
+    starpilot astrologer "What can I use to build a web app with Python?"
+    starpilot astrologer "Suggest some Rust machine learning crates"
+    ```
+
+    """
+    metadata_field_info = [
+        AttributeInfo(
+            name="languages",
+            description="the programming languages of a repo. Example: ['python', 'R', 'Rust']",
+            type="string",
+        ),
+        AttributeInfo(
+            name="name",
+            description="the name of a repository. Example: 'langchain'",
+            type="string",
+        ),
+        AttributeInfo(
+            name="topics",
+            description="the topics a repository is tagged with. Example: ['data-science', 'machine-learning', 'web-development', 'tidyverse']",
+            type="string",
+        ),
+        AttributeInfo(
+            name="url",
+            description="the url of a repository on GitHub",
+            type="string",
+        ),
+        AttributeInfo(
+            name="stargazerCount",
+            description="the number of stars a repository has on GitHub",
+            type="number",
+        ),
+    ]
+
+    document_content_description = "content describing a repository on GitHub"
+
+    prompt = get_query_constructor_prompt(
+        document_content_description,
+        metadata_field_info,
+        examples=[
+            (
+                "Python machine learning repos",
+                {
+                    "query": "machine learning",
+                    "filter": 'eq("primaryLanguage", "Python")',
+                },
+            ),
+            (
+                "Rust Dataframe crates",
+                {"query": "data frame", "filter": 'eq("primaryLanguage", "Rust")'},
+            ),
+            (
+                "What R packages do time series analysis",
+                {"query": "time series", "filter": 'eq("primaryLanguage", "R")'},
+            ),
+            (
+                "data frame packages with 100 stars or more",
+                {
+                    "query": "data frame",
+                    "filter": 'gte("stargazerCount", 100)',
+                },
+            ),
+        ],
+        allowed_comparators=[
+            Comparator.EQ,
+            Comparator.NE,
+            Comparator.GT,
+            Comparator.GTE,
+            Comparator.LT,
+            Comparator.LTE,
+        ],
+    )
+
+	llm = ChatOpenAI(model="gpt-3.5-turbo",)
+
+    output_parser = StructuredQueryOutputParser.from_components()
+
+    query_constructor = prompt | llm | output_parser
+
+    vectorstore = Chroma(
+        persist_directory="./vectorstore-chroma",
+        embedding_function=OpenAIEmbeddings(model="text-embedding-3-large"),
+    )
+
+    retriever = SelfQueryRetriever(
+        query_constructor=query_constructor,
+        vectorstore=vectorstore,
+        structured_query_translator=ChromaTranslator(),
+        search_kwargs={"k": k},
+    )
+
+    results = retriever.invoke(query)
+
+	return results
+```
+
+::: notes
+- As well as the metadata fields, we describe the kind of data we are querying
+- We also provide examples of queries and filters in a 'few-shot' style prompting format
+- The examples should reference the metadata fields we described earlier
+- The `get_query_constructor_prompt` function also accepts a list of allowed comparators, which are specific to the vector store implementation. `Chroma` will have different comparators to `Weaviate` for example
+:::
+
+## Self Querying {auto-animate=true}
+
+Use LangChain Expression Language in a chain to make a `QueryConstructor` object
+
+```{.python code-line-numbers="84-88"}
+def astrologer(
+	query: str,
+	k: Optional[int] = typer.Option(
+		4, help="Number of results to fetch from the vectorstore"
+	),
+) -> List[Document]:
+	"""
+	A self-query of the vectorstore that allows the user to search for a repo while filtering by attributes
+
+	Example:
+	```
+	starpilot astrologer "What can I use to build a web app with Python?"
+	starpilot astrologer "Suggest some Rust machine learning crates"
+	```
+
+	"""
+	metadata_field_info = [
+		AttributeInfo(
+			name="languages",
+			description="the programming languages of a repo. Example: ['python', 'R', 'Rust']",
+			type="string",
+		),
+		AttributeInfo(
+			name="name",
+			description="the name of a repository. Example: 'langchain'",
+			type="string",
+		),
+		AttributeInfo(
+			name="topics",
+			description="the topics a repository is tagged with. Example: ['data-science', 'machine-learning', 'web-development', 'tidyverse']",
+			type="string",
+		),
+		AttributeInfo(
+			name="url",
+			description="the url of a repository on GitHub",
+			type="string",
+		),
+		AttributeInfo(
+			name="stargazerCount",
+			description="the number of stars a repository has on GitHub",
+			type="number",
+		),
+	]
+
+	document_content_description = "content describing a repository on GitHub"
+
+	prompt = get_query_constructor_prompt(
+		document_content_description,
+		metadata_field_info,
+		examples=[
+			(
+				"Python machine learning repos",
+				{
+					"query": "machine learning",
+					"filter": 'eq("primaryLanguage", "Python")',
+				},
+			),
+			(
+				"Rust Dataframe crates",
+				{"query": "data frame", "filter": 'eq("primaryLanguage", "Rust")'},
+			),
+			(
+				"What R packages do time series analysis",
+				{"query": "time series", "filter": 'eq("primaryLanguage", "R")'},
+			),
+			(
+				"data frame packages with 100 stars or more",
+				{
+					"query": "data frame",
+					"filter": 'gte("stargazerCount", 100)',
+				},
+			),
+		],
+		allowed_comparators=[
+			Comparator.EQ,
+			Comparator.NE,
+			Comparator.GT,
+			Comparator.GTE,
+			Comparator.LT,
+			Comparator.LTE,
+		],
+	)
+
+	llm = ChatOpenAI(model="gpt-3.5-turbo",)
+
+    output_parser = StructuredQueryOutputParser.from_components()
+
+    query_constructor = prompt | llm | output_parser
+
+    vectorstore = Chroma(
+        persist_directory="./vectorstore-chroma",
+        embedding_function=OpenAIEmbeddings(model="text-embedding-3-large"),
+    )
+
+    retriever = SelfQueryRetriever(
+        query_constructor=query_constructor,
+        vectorstore=vectorstore,
+        structured_query_translator=ChromaTranslator(),
+        search_kwargs={"k": k},
+    )
+
+    results = retriever.invoke(query)
+
+	return results
+```
+
+::: notes
+- So LCEL is a chain of functions that are used to create a `QueryConstructor` object
+- LCEL allows you to pipe functions together to return this execution chain
+- Similar to the `|` operator in bash or `.pipe()` in pandas
+:::
+
+## Self Querying {auto-animate=true}
+
+Create a `SelfQueryRetriever` object from the `QueryConstructor` object and the `Chroma` object
+
+```{.python code-line-numbers="90-104"}
+def astrologer(
+	query: str,
+	k: Optional[int] = typer.Option(
+		4, help="Number of results to fetch from the vectorstore"
+	),
+) -> List[Document]:
+	"""
+	A self-query of the vectorstore that allows the user to search for a repo while filtering by attributes
+
+	Example:
+	```
+	starpilot astrologer "What can I use to build a web app with Python?"
+	starpilot astrologer "Suggest some Rust machine learning crates"
+	```
+
+	"""
+	metadata_field_info = [
+		AttributeInfo(
+			name="languages",
+			description="the programming languages of a repo. Example: ['python', 'R', 'Rust']",
+			type="string",
+		),
+		AttributeInfo(
+			name="name",
+			description="the name of a repository. Example: 'langchain'",
+			type="string",
+		),
+		AttributeInfo(
+			name="topics",
+			description="the topics a repository is tagged with. Example: ['data-science', 'machine-learning', 'web-development', 'tidyverse']",
+			type="string",
+		),
+		AttributeInfo(
+			name="url",
+			description="the url of a repository on GitHub",
+			type="string",
+		),
+		AttributeInfo(
+			name="stargazerCount",
+			description="the number of stars a repository has on GitHub",
+			type="number",
+		),
+	]
+
+	document_content_description = "content describing a repository on GitHub"
+
+	prompt = get_query_constructor_prompt(
+		document_content_description,
+		metadata_field_info,
+		examples=[
+			(
+				"Python machine learning repos",
+				{
+					"query": "machine learning",
+					"filter": 'eq("primaryLanguage", "Python")',
+				},
+			),
+			(
+				"Rust Dataframe crates",
+				{"query": "data frame", "filter": 'eq("primaryLanguage", "Rust")'},
+			),
+			(
+				"What R packages do time series analysis",
+				{"query": "time series", "filter": 'eq("primaryLanguage", "R")'},
+			),
+			(
+				"data frame packages with 100 stars or more",
+				{
+					"query": "data frame",
+					"filter": 'gte("stargazerCount", 100)',
+				},
+			),
+		],
+		allowed_comparators=[
+			Comparator.EQ,
+			Comparator.NE,
+			Comparator.GT,
+			Comparator.GTE,
+			Comparator.LT,
+			Comparator.LTE,
+		],
+	)
+
+	llm = ChatOpenAI(model="gpt-3.5-turbo",)
+
+    output_parser = StructuredQueryOutputParser.from_components()
+
+    query_constructor = prompt | llm | output_parser
+
+    vectorstore = Chroma(
+        persist_directory="./vectorstore-chroma",
+        embedding_function=OpenAIEmbeddings(model="text-embedding-3-large"),
+    )
+
+    retriever = SelfQueryRetriever(
+        query_constructor=query_constructor,
+        vectorstore=vectorstore,
+        structured_query_translator=ChromaTranslator(),
+        search_kwargs={"k": k},
+    )
+
+    results = retriever.invoke(query)
+
+	return results
+```
+
+::: notes
+- Finally we instantiate the `SelfQueryRetriever` class with the `QueryConstructor` object we created earlier and the `Chroma` object like last time
+- We then call the `invoke` method on the `SelfQueryRetriever` object with the query string
+- The `invoke` method will return the most relevant `Document` objects _after_ filtering by the metadata fields
+:::
+
+# A sidenote on my experience using LangChain
+
+## What I liked
+
+- `Langchain` is an "extensively" documented library
+- The LangChain _company_ has worked really hard to produce lots of examples and tutorials
+    - Lance from LangChain has great hands on YT videos
+- LangChain fulfills the goal of 'being the glue between LLM/AI/Vectorstore services'
+	- Kind of like `scikit-learn` for LLMs
+
+## What I didn't like
+- _heavily_ OOP
+- Must read source code to understand exactly what is and isn't supported for each class
+	- Entirely unclear when `kwargs` are actually needed, or when they are silently ignored
+	- 'Wrappers' and 'Connectors' don't implement the full API
+- Moves fast and breaks things (@`v0.1.*`)
+	- Documentation is not always up to date and often conflicting
+	- Huge structural changes (@`v0.2.*`) split into `langchain` and `langchain_community`
+- Observability is secondary
+	- LangChain is a _company_ after all
