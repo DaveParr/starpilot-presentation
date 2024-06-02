@@ -5,12 +5,13 @@ format:
         theme: "solarized"
         mermaid: 
           format: "png"
+          theme: "neutral"
 editor: 
   markdown: 
     wrap: 72
 ---
 
-```{r}
+```{r label = "setup"}
 if (!require(ggplot2)) {
     install.packages("ggplot2")
 }
@@ -272,7 +273,7 @@ of text we want to embed separately
 
 ## Embedding Example {auto-animate="true"}
 
-```{mermaid}
+```{mermaid label="embedding diagram"}
 flowchart LR
 
 subgraph strings
@@ -312,7 +313,7 @@ are billions of dimensions
 
 ## Embedding Example {auto-animate="true"}
 
-```{r}
+```{r label="intuition example"}
 library(ggplot2)
 
 df <- data.frame(
@@ -341,7 +342,7 @@ converted into an embedding
 
 ## Embedding Example {auto-animate="true"}
 
-```{r}
+```{r label="intuition example with query"}
 df <- rbind(df, data.frame(query = "data frames", relevance_to_zoologists = 0.2, relevance_to_data_scientists = 0.7))
 
 df$distance <- sqrt((df$relevance_to_zoologists - 0.2)^2 + (df$relevance_to_data_scientists - 0.7)^2)
@@ -389,7 +390,7 @@ this known point we then compute the distance to the other points
 
 ## Similarity Search
 
-```{mermaid}
+```{mermaid label="minimum viable solution",  .smaller}
 flowchart LR
 
 subgraph 0 Resources
@@ -399,15 +400,15 @@ subgraph 0 Resources
 end
 
 subgraph 1 ETL
-	raw(raw_GH/*.json)
-	docs_in(Documents)
-	vec(Vector Embedding)
+	raw(JSON)
+	docs_in(Docs)
+	vec(Embedding)
 
-	GH--->|PyGitHub| raw
-	raw-->|LangChain|docs_in
-	docs_in-->|LangChain|LLM
-	LLM-->|LangChain|vec
-	vec-->|LangChain|DB
+	GH--->raw
+	raw-->docs_in
+	docs_in-->LLM
+	LLM-->vec
+	vec-->DB
 end
 
 subgraph 2 Execution
@@ -418,12 +419,12 @@ subgraph 2 Execution
 	docs_out(Document)
 	a(suggestions)
 
-	cli-->|Typer|q
-	q -->|LangChain|LLM
-	LLM -->|LangChain|q_vec
-	q_vec -->|LangChain|DB
-	DB-->|LangChain|docs_out
-	docs_out-->|Typer|a
+	cli-->q
+	q -->LLM
+	LLM -->q_vec
+	q_vec -->DB
+	DB-->docs_out
+	docs_out-->a
 end
 ```
 
@@ -446,7 +447,7 @@ end
 
 ## Refined Version
 
-```{mermaid}
+```{mermaid label = "self query solution"}
 flowchart LR
 
 LLM([LLM])
@@ -472,26 +473,26 @@ subgraph 0 Resources
 end
 
 subgraph 1 ETL
-	GH--->|GraphQL| raw
-	raw-->|LangChain|prepped
-	prepped-->|LangChain|docs_in
-	docs_in-->|LangChain|LLM
-	LLM-->|LangChain|vec_doc
+	GH--->raw
+	raw-->prepped
+	prepped-->docs_in
+	docs_in-->LLM
+	LLM-->vec_doc
 	vec_doc-->DB
 end
 
 subgraph 2 Execution
-	LLM-->|LangChain|self_query
-	self_query-->|LangChain|db_filter
+	LLM-->self_query
+	self_query-->db_filter
 	style self_query fill:red
-	self_query-->|LangChain|vec_q
+	self_query-->vec_q
 	db_filter-->DB
 	style db_filter fill:red
 	vec_q --> DB
-	cli-->|typer|q
-	q -->|LangChain|LLM
-	DB-->|LangChain|docs_out
-	docs_out-->|Typer|a
+	cli-->q
+	q -->LLM
+	DB-->docs_out
+	docs_out-->a
 end
 ```
 
