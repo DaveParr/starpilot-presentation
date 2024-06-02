@@ -84,7 +84,18 @@ format:
 -   Use you an AI for great repo suggestions
 -   Generate personal suggestions of useful packages/tools for your current programming goals
 
-<!-- TODO: DEMO -->
+
+## 
+
+<script src="https://asciinema.org/a/661841.js" id="asciicast-661841" async="true"></script>
+
+::: notes
+- So here is a smash cut to the most basic demo.
+- I call starpilot to execute the 'shoot' command with the query "machine learning"
+- Starpilot returns 10 repos that are all semantically similar to the query, and all exist, no hallucinations here
+- Most interestingly the repo `DeepLearningExamples` is returned, which is depending on your level of pedanticness, not a 'machine learning' repo, but a 'deep learning' repo
+- However, `DeepLearningExamples` never states the term machine learning. It's a deep learning, and that is semantically similar to machine learning. This is exactly the kind of result I was hoping for. The tool is looking at the search _intention_ not the search _terms_
+:::
 
 ## Why is 'semantic similarity' important?
 
@@ -1330,9 +1341,9 @@ def astrologer(
 -   The `invoke` method will return the most relevant `Document` objects *after* filtering by the metadata fields
 :::
 
-## DEMO ASTROLOGER
+## 
 
-<!-- TODO -->
+<script src="https://asciinema.org/a/UvFTn7EMZoUVC8eMbWU59mNyc.js" id="asciicast-UvFTn7EMZoUVC8eMbWU59mNyc" async="true"></script>
 
 # A sidenote on my experience using LangChain
 

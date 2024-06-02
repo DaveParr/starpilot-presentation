@@ -1,0 +1,4 @@
+- source: presentation.qmd
+  quarto-pub:
+    - id: baf4ea1b-769e-4cec-b6fb-f5bb5a6b7542
+      url: 'https://daveparr.quarto.pub/starpilot-presentation-draft'
