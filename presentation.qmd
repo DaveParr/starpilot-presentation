@@ -1,5 +1,6 @@
 ---
-title: "Presentation"
+title: "`starpilot`"
+subtitle: "A tool to suggest GitHub repos from your users stars"
 format: 
     revealjs:
         theme: "solarized"
@@ -19,12 +20,20 @@ if (!require(ggplot2)) {
 
 # Introduction
 
+::: notes
+- Hi, I'm Dave, and thanks for coming to see me talk about a recent sideproject.
+:::
+
 ## Goals for the talk
 
 -   Share an AI project I've been working on
 -   Share some of the design decisions I made to build it
 -   Share some of the experience I had building it
 -   Share some of the code I wrote to build it
+
+::: notes
+Before we start I'd like to understand more about all of you, as we have a mixture of folks potentially from AIWales and from PyData Cardiff.
+:::
 
 ## Level Set {auto-animate="true"}
 
@@ -46,7 +55,7 @@ if (!require(ggplot2)) {
 -   Can you define these terms?
 -   I'm not going to put anyone on the spot here, but I'd love to have
     people raise their hands if they feel they can define these terms
--   This will help me understand the level of knowledge in the room and
+-   This will help me understand the level of knowledge in the room and hopefully
     tune the rest of the talk
 :::
 
@@ -99,11 +108,18 @@ if (!require(ggplot2)) {
     -   Semantic meaning
 :::
 
-## What is starpilot?
+## The Project
 
--   Use you an AI for great repo suggestions
--   Generate personal suggestions of useful packages/tools for your
-    current programming goals
+### Starpilot
+> A tool to suggest GitHub repos from your users stars based on semantic similarity
+
+::: notes
+
+-   The project is called `starpilot`
+-   It's a tool that suggests GitHub repos based on semantic similarity
+-   The idea is that you can give it a query, and it will return the
+    most semantically similar repos to that query that your GitHub user has starred
+:::
 
 ## Demo 1
 
@@ -379,16 +395,20 @@ this known point we then compute the distance to the other points
 
 ## Solution Architecture
 
-::: {.r-vstack}
-![](images/typer.svg){.fragment height=100}
-![](images/langchain.png){.fragment height=100}
-![](images/chroma.svg){.fragment height=100}
-![](images/github.png){.fragment height=100}
+:::{}
+![](images/github.png){.fragment width=400}
+
+![](images/langchain.png){.fragment width=400}
+![](images/chroma.svg){.fragment width=400}
+![](images/typer.svg){.fragment width=400}
 :::
 
 ::: notes
--   PyGithub
-    -   GitHub Rest API access
+-   So to build this I need a few tools, libraries and datasources
+-   GitHub User Stars
+    -   Rest API then GraphQL API
+        -   I'll mention more about the change between those in a moment
+    -   JSON files
 -   Langchain
     -   LLM Rest API Access
     -   Document parsing tools
@@ -1485,8 +1505,9 @@ def astrologer(
 ## What I liked {auto-animate="true"}
 
 -   `Langchain` is an "extensively" documented
--   Langchain company backed viedos
+-   Langchain company backed videos and tutorials
 -   Langchain is a suitable orchestration framework
+    -   It's like `scikit-learn` for LLMs
 
 ::: notes
 -   `Langchain` has a huge amount of documentation
@@ -1503,9 +1524,9 @@ def astrologer(
 
 ## What I didn't like {auto-animate="true"}
 
--   *heavily* OOP
--   Reading the sourcecode is still nessecary
-    -   `kwargs` are often silently ignored, or undocumented
+-   *Heavily* OOP
+-   Reading the sourcecode is still necessary
+    -   `kwargs` are often silently ignored and undocumented
     -   'Wrappers' and 'Connectors' don't implement the full API
 -   Moves fast and breaks things (\@`v0.1.*`)
 -   Observability is secondary
@@ -1549,8 +1570,7 @@ def astrologer(
 
 ::: notes
 -   All the code I've shown today and all the code I didn't show is all
-    Open Source licensed, so dig in
--   fork it and build a new feature
+    Open Source licensed, so dig in fork it and build a new feature. This is already my most popular repo to date, so I'm excited to see where it goes.
 -   `LangChain` is also open source licensed, but much harder to get
     involved in, and tougher to read
 -   This talk is also open source, along with speaker notes, so you can
@@ -1574,3 +1594,10 @@ def astrologer(
     new dataset, ustilises Hypothetical Document Embeddings, and has a
     streamlit frontend, which might be a future talk?
 :::
+
+# Thanks
+
+-   Github: [`daveparr`](https://github.com/DaveParr)
+-   Blog: [`daveparr.info`](https://daveparr.info)
+-   [Starpilot](https://github.com/DaveParr/starpilot)
+    -   [Starpilot Presentation](https://github.com/DaveParr/starpilot-presentation)
