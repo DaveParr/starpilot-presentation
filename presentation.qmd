@@ -108,13 +108,13 @@ Before we start I'd like to understand more about all of you, as we have a mixtu
     -   Semantic meaning
 :::
 
-## The Project
+## The Project is `starpilot`
 
-### Starpilot
 > A tool to suggest GitHub repos from your users stars based on semantic similarity
 
-::: notes
+![](images/563000_The github octocat riding a spaceship through a st_xl-1024-v1-0.png){fig-align="center" height=400}
 
+::: notes
 -   The project is called `starpilot`
 -   It's a tool that suggests GitHub repos based on semantic similarity
 -   The idea is that you can give it a query, and it will return the
