@@ -1,5 +1,6 @@
 ---
-title: "Presentation"
+title: "`starpilot`"
+subtitle: "A tool to suggest GitHub repos from your users stars"
 format: 
     revealjs:
         theme: "solarized"
@@ -19,12 +20,20 @@ if (!require(ggplot2)) {
 
 # Introduction
 
+::: notes
+- Hi, I'm Dave, and thanks for coming to see me talk about a recent sideproject.
+:::
+
 ## Goals for the talk
 
 -   Share an AI project I've been working on
 -   Share some of the design decisions I made to build it
 -   Share some of the experience I had building it
 -   Share some of the code I wrote to build it
+
+::: notes
+Before we start I'd like to understand more about all of you, as we have a mixture of folks potentially from AIWales and from PyData Cardiff.
+:::
 
 ## Level Set {auto-animate="true"}
 
@@ -46,7 +55,7 @@ if (!require(ggplot2)) {
 -   Can you define these terms?
 -   I'm not going to put anyone on the spot here, but I'd love to have
     people raise their hands if they feel they can define these terms
--   This will help me understand the level of knowledge in the room and
+-   This will help me understand the level of knowledge in the room and hopefully
     tune the rest of the talk
 :::
 
@@ -99,11 +108,18 @@ if (!require(ggplot2)) {
     -   Semantic meaning
 :::
 
-## What is starpilot?
+## The Project is `starpilot`
 
--   Use you an AI for great repo suggestions
--   Generate personal suggestions of useful packages/tools for your
-    current programming goals
+> A tool to suggest GitHub repos from your users stars based on semantic similarity
+
+![](images/563000_The github octocat riding a spaceship through a st_xl-1024-v1-0.png){fig-align="center" height=400}
+
+::: notes
+-   The project is called `starpilot`
+-   It's a tool that suggests GitHub repos based on semantic similarity
+-   The idea is that you can give it a query, and it will return the
+    most semantically similar repos to that query that your GitHub user has starred
+:::
 
 ## Demo 1
 
@@ -369,16 +385,30 @@ this known point we then compute the distance to the other points
 
 ## Solution Requirements
 
+::: notes
 -   A method to extract the data from GitHub
 -   A connection to an llm
 -   A framework to parse 100s (1000s?) of 'similarly' structured data
 -   A data store for processed data
 -   An interactive interface for the developer to access the data
+:::
 
 ## Solution Architecture
 
--   PyGithub
-    -   GitHub Rest API access
+:::{}
+![](images/github.png){.fragment width=400}
+
+![](images/langchain.png){.fragment width=400}
+![](images/chroma.svg){.fragment width=400}
+![](images/typer.svg){.fragment width=400}
+:::
+
+::: notes
+-   So to build this I need a few tools, libraries and datasources
+-   GitHub User Stars
+    -   Rest API then GraphQL API
+        -   I'll mention more about the change between those in a moment
+    -   JSON files
 -   Langchain
     -   LLM Rest API Access
     -   Document parsing tools
@@ -387,6 +417,7 @@ this known point we then compute the distance to the other points
     -   On disk vector store
 -   Typer
     -   'FastAPI' style CLI framework
+:::
 
 ## Similarity Search
 
@@ -428,13 +459,15 @@ subgraph 2 Execution
 end
 ```
 
-## Outcome
+## Outcome {auto-animate="true"}
 
 -   IT'S ALIVE
     -   Data gets read
     -   Read data gets embedded
     -   Embedded data gets stored
     -   Embedded data gets queried
+    
+## Outcome {auto-animate="true"}
 -   IT STINKS
     -   Reading data is punishingly long
         -   200 stars in 30 minutes
@@ -498,6 +531,17 @@ end
 
 ## What this gets us
 
+-   Faster Data reads from GitHub
+    -   20x
+-   Enhanced data preprocessing
+    -   Tags, Stars, Primary Language
+-   Selective data load
+    -   'Popular' repos
+-   Self Querying
+    -   Language specific results
+
+
+::: notes
 -   Faster data read with `GraphQL`
     -   Reduces network overhead of a per repo call
         -   Returns are now paginated `json` files
@@ -513,8 +557,6 @@ end
 -   Enhanced data preprocessing + Self Querying
     -   Enables more nuanced queries like "Dataframes for Python" -\>
         "Pandas"
-
-::: notes
 -   So lets look at some key parts of the code now
 :::
 
@@ -1453,25 +1495,43 @@ def astrologer(
     *after* filtering by the metadata fields
 :::
 
-## 
+## Demo `astrolger` function
 
 ```{=html}
 <script src="https://asciinema.org/a/UvFTn7EMZoUVC8eMbWU59mNyc.js" id="asciicast-UvFTn7EMZoUVC8eMbWU59mNyc" async="true"></script>
 ```
-# A sidenote on my experience using LangChain
+# Evaluation
 
 ## What I liked {auto-animate="true"}
 
--   `Langchain` is an "extensively" documented library
+-   `Langchain` is an "extensively" documented
+-   Langchain company backed videos and tutorials
+-   Langchain is a suitable orchestration framework
+    -   It's like `scikit-learn` for LLMs
+
+::: notes
+-   `Langchain` has a huge amount of documentation
+-   It's relatively easy to find an example from a notebook that
+    stitches together what you might want
+-   There are also all the expected class oriented API docs
 -   The LangChain *company* has worked really hard to produce lots of
     examples and tutorials
     -   Lance from LangChain has great hands on YT videos
 -   LangChain fulfills the goal of 'being the glue between
     LLM/AI/Vectorstore services'
     -   Kind of like `scikit-learn` for LLMs
+:::
 
 ## What I didn't like {auto-animate="true"}
 
+-   *Heavily* OOP
+-   Reading the sourcecode is still necessary
+    -   `kwargs` are often silently ignored and undocumented
+    -   'Wrappers' and 'Connectors' don't implement the full API
+-   Moves fast and breaks things (\@`v0.1.*`)
+-   Observability is secondary
+
+::: notes
 -   *heavily* OOP
 -   Must read source code to understand exactly what is and isn't
     supported for each class
@@ -1484,12 +1544,38 @@ def astrologer(
         `langchain_community`
 -   Observability is secondary
     -   LangChain is a *company* after all
+    -   They are investing a lot into the langchain ecosystem, and
+        AI/LLM community as a whole
+    -   They do however still need to make themselves financially
+        sustainable, and they are attempting to do that through
+        monetizing observability for production AI applications though
+        LangSmith
+    -   I'm mixed about that, in that I think it's important to make
+        sure they don't end up as a vast voluntary project that leads to
+        burnout and the framework failing, but at the same time they are
+        taking a very product centric route out of that.
+    -   I feel that as a result *developer* logging and observability
+        suffers as a side effect.
+:::
 
 # Conclusion
 
 ## Outcome for developers
 
--   Available now
+-   `starpilot`is available now:`DaveParr/starpilot`
+    -   Star it, fork it, PR it!
+-   `Langchain` is also available now: `langchain/langchain`
+-   This talk is also also available now:
+    `DaveParr/starpilot-presentation`
+
+::: notes
+-   All the code I've shown today and all the code I didn't show is all
+    Open Source licensed, so dig in fork it and build a new feature. This is already my most popular repo to date, so I'm excited to see where it goes.
+-   `LangChain` is also open source licensed, but much harder to get
+    involved in, and tougher to read
+-   This talk is also open source, along with speaker notes, so you can
+    go back and remind yourself of the last 30 minutes of your life
+:::
 
 ## Outcome for me
 
@@ -1498,6 +1584,20 @@ def astrologer(
 -   I've translated this understanding into another, similar project for
     Magic the Gathering underway
 
-## Offer to the audience
+::: notes
+-   I have something that works on my machine, that I can use to get
+    more out of my GitHub stars, so that's nice
+-   I've also been able to get hands on with building something novel,
+    which is something that I enjoy from a learning perspective
+-   And I've started to transfer these and other concepts into a new
+    project on Magic the Gathering, which extends on these ideas with a
+    new dataset, ustilises Hypothetical Document Embeddings, and has a
+    streamlit frontend, which might be a future talk?
+:::
 
--   This is an Open Source project
+# Thanks
+
+-   Github: [`daveparr`](https://github.com/DaveParr)
+-   Blog: [`daveparr.info`](https://daveparr.info)
+-   [Starpilot](https://github.com/DaveParr/starpilot)
+    -   [Starpilot Presentation](https://github.com/DaveParr/starpilot-presentation)
