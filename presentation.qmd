@@ -273,8 +273,8 @@ Before we start I'd like to understand more about all of you, as we have a mixtu
 
 # Embedding Example
 
--   "polars module"
 -   "pandas package"
+-   "polars module"
 -   "panda breeding"
 -   "polar environment"
 
@@ -293,8 +293,8 @@ of text we want to embed separately
 flowchart LR
 
 subgraph strings
-pm("polars module")
 pp("pandas package")
+pm("polars module")
 pb("panda breeding")
 pe("polar environment")
 end
@@ -302,20 +302,20 @@ end
 subgraph embedder
 embed([function])
 
-pm --> embed
 pp --> embed
+pm --> embed
 pb --> embed
 pe --> embed
 end
 
 subgraph vector
-pmv("0.24, 0.12")
-ppv("0.91, 0.83")
-pbv("0.83, 0.12")
-pev("0.91, 0.24")
+ppv("0.37, 0.88")
+pmv("0.49, 0.66")
+pbv("0.83, 0.24")
+pev("0.70, 0.12")
 
-embed --> pmv
 embed --> ppv
+embed --> pmv
 embed --> pbv
 embed --> pev
 end
@@ -333,10 +333,10 @@ are billions of dimensions
 library(ggplot2)
 
 df <- data.frame(
-  query = c("polars module", "pandas package", "panda breeding", "polar environment"),
-  relevance_to_zoologists = c(0.24, 0.12, 0.83, 0.70),
-  relevance_to_data_scientists = c(0.91, 0.83, 0.24, 0.12),
-  stringsAsFactors = FALSE
+    query = c("pandas package", "polars module", "panda breeding", "polar environment"),
+    relevance_to_zoologists = c(0.37, 0.49, 0.83, 0.70),
+    relevance_to_data_scientists = c(0.88, 0.66, 0.24, 0.12),
+    stringsAsFactors = FALSE
 )
 
 ggplot(df, aes(x=relevance_to_zoologists, y=relevance_to_data_scientists)) +
@@ -359,26 +359,78 @@ converted into an embedding
 ## Embedding Example {auto-animate="true"}
 
 ```{r label="intuition example with query"}
-df <- rbind(df, data.frame(query = "data frames", relevance_to_zoologists = 0.2, relevance_to_data_scientists = 0.7))
+# Add the 'data frames' query
+reference_vector <- c(0.1, 0.6)
+df <- rbind(df, data.frame(query = "data frames", relevance_to_zoologists = reference_vector[1], relevance_to_data_scientists = reference_vector[2]))
 
-df$distance <- sqrt((df$relevance_to_zoologists - 0.2)^2 + (df$relevance_to_data_scientists - 0.7)^2)
+# Function to calculate cosine similarity
+cos_sim <- function(x, reference_vector) {
+    dot_product <- sum(x * reference_vector)
+    magn_x <- sqrt(sum(x^2))
+    magn_reference <- sqrt(sum(reference_vector^2))
+    similarity <- dot_product / (magn_x * magn_reference)
+    return(similarity)
+}
 
-ggplot(df, aes(x=relevance_to_zoologists, y=relevance_to_data_scientists)) +
+# Apply function to calculate cosine similarities
+df$cosine_similarity <- apply(
+    df[, c("relevance_to_zoologists", "relevance_to_data_scientists")],
+    1,
+    function(x) {cos_sim(x, reference_vector)}
+)
+
+# Remove query similarity to self
+df$cosine_similarity[end(df$cosine_similarity)[1]] = NA
+
+# Plot
+p <- ggplot(df, aes(x=relevance_to_zoologists, y=relevance_to_data_scientists)) +
     geom_point() +
     geom_text(aes(label=query), hjust=0.5, vjust=-0.5, check_overlap = TRUE) +
-    geom_text(aes(label=round(distance, 2)), hjust=0.5, vjust=1.5, check_overlap = TRUE) +
-    geom_segment(aes(xend = 0.2, yend = 0.7), linetype = "dashed", color = "red") +
+    geom_segment(aes(
+        x = 0, y = 0, xend = relevance_to_zoologists, yend = relevance_to_data_scientists
+        ),
+        arrow = arrow(length = unit(0.03, "npc")), size = 1, color = "black"
+    ) +
     scale_x_continuous(limits = c(0, 1)) +
     scale_y_continuous(limits = c(0, 1)) +
     xlab("Relevance to Zoologists") +
     ylab("Relevance to Data Scientists") +
     coord_fixed(ratio = 1)
+
+# Loop to draw arcs and label
+arc_cols = c("blue", "red", "green", "purple")
+for(i in 1:nrow(df)) {
+
+    seg_pos <- 4 / (4 + i)
+
+    curve_data <- df[i, ]
+    curve_data$xpos <- seg_pos * reference_vector[1]
+    curve_data$ypos <- seg_pos * reference_vector[2]
+
+    p <- p + geom_curve(
+        data = curve_data,
+        aes(
+            x = xpos, y = ypos,
+            xend = relevance_to_zoologists / 2, yend = relevance_to_data_scientists / 2),
+            curvature = -0.4, color = arc_cols[i], linetype = "dashed", size = 1.2
+        ) +
+    geom_text(
+        data = curve_data, aes(
+            x = relevance_to_zoologists / 2, y = relevance_to_data_scientists / 2, 
+            label = round(cosine_similarity, 2)), check_overlap = TRUE, color = "black",
+            vjust = -2.5, hjust=0.7
+        )
+}
+p
 ```
 
 ::: notes
 So now lets invent a query to put in the embedding space: "data frames"
-When we embed this query, it will be placed in the embedding space From
-this known point we then compute the distance to the other points
+When we embed this query, it will be placed in the embedding space
+From this known point we then compute the cosine similarity to the other points
+This is a simple mathematical operation that measures the similarity between two vectors, based on the angle between them
+The closer the angle is to 0, the more similar the vectors are, and the higher the cosine similarity
+This is shown in 2-dimensions, but in practice, the embeddings are in 100s of dimensions, and the cosine similarity is calculated in the same way
 :::
 
 # First Experiment
