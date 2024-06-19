@@ -24,6 +24,12 @@ if (!require(ggplot2)) {
 - Hi, I'm Dave, and thanks for coming to see me talk about a recent sideproject.
 :::
 
+## This talk is hosted on quarto
+
+- You can follow along with slides live if you are at the back
+
+> ### https://daveparr.quarto.pub/starpilot
+
 ## Goals for the talk
 
 -   Share an AI project I've been working on
@@ -1495,7 +1501,7 @@ def astrologer(
     *after* filtering by the metadata fields
 :::
 
-## Demo `astrolger` function
+## Demo `astrologer` function
 
 ```{=html}
 <script src="https://asciinema.org/a/UvFTn7EMZoUVC8eMbWU59mNyc.js" id="asciicast-UvFTn7EMZoUVC8eMbWU59mNyc" async="true"></script>
